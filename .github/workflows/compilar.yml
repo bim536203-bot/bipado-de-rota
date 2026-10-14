@@ -2,7 +2,7 @@ name: Compilar e publicar BIPADO DE ROTA
 on:
   push:
     branches: [main]
-    paths: ['projeto.zip']
+    paths: ['projeto.zip', '.github/workflows/compilar.yml']
   workflow_dispatch:
 permissions:
   contents: write
@@ -14,14 +14,15 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+      - uses: android-actions/setup-android@v4
       - name: Preparar SDK
         run: sdkmanager 'platforms;android-35' 'build-tools;34.0.0'
       - name: Validar recebimento do ZIP
