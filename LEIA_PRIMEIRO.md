@@ -23,5 +23,5 @@ O processo lê e executa o projeto enviado pelo dono do repositório. Somente qu
 GitHub Actions usa runner padrão ubuntu-24.04. Não usa Supabase nem Play Store.
 
 
-## VERSÃO 17
-O pacote projeto.zip contém as correções de captura/layout, edição manual, proteção de leitura ambígua, design de endereço não encontrado, cartões dos pacotes no mesmo endereço e CSV com um destino por endereço e Notes PACOTE 1-2-3. O publicador compila/linta o Android, executa 916 verificações Kotlin, compara a assinatura original e só publica a release após as verificações. Testar o fluxo real em aparelhos e a importação no Spoke após instalar; testes de lógica não substituem uso em dispositivo. O Android ainda pede confirmação de instalação.
+## VERSÃO 18
+O pacote projeto.zip contém as correções de captura/layout, edição manual, proteção de leitura ambígua, design de endereço não encontrado, cartões dos pacotes no mesmo endereço e CSV com um destino por endereço e Notes PACOTE 1-2-3. O publicador compila/linta o Android, executa 956 verificações Kotlin, compara a assinatura original e só publica a release após as verificações. Testar o fluxo real em aparelhos e a importação no Spoke após instalar; testes de lógica não substituem uso em dispositivo. O Android ainda pede confirmação de instalação.

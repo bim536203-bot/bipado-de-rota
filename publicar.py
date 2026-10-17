@@ -80,10 +80,10 @@ def main():
             raise ValueError('Dependência de testes inválida')
         storetests=temp/'store-tests.jar'
         storesrc=[src/(n+'.kt') for n in ['Store','AddressIdentity','AddressText','DuplicatePackageLabel','RouteCsv']]
-        storesrc += [project/'verification/store'/n for n in ['Context.kt','StoreSequenceRegression.kt','SameAddressRegression.kt','RouteCsvRegression.kt']]
+        storesrc += [project/'verification/store'/n for n in ['Context.kt','StoreSequenceRegression.kt','SameAddressRegression.kt','RouteCsvRegression.kt','GroupedCardsRegression.kt']]
         testcp=str(stdlib)+os.pathsep+str(jsonjar)
         run(['java','-cp',os.pathsep.join(jars),'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler','-no-stdlib','-no-reflect','-classpath',testcp,'-d',str(storetests),*map(str,storesrc)])
-        for test in ['SameAddressRegressionKt','StoreSequenceRegressionKt','RouteCsvRegressionKt']:
+        for test in ['SameAddressRegressionKt','StoreSequenceRegressionKt','RouteCsvRegressionKt','GroupedCardsRegressionKt']:
             run(['java','-cp',str(storetests)+os.pathsep+testcp,test],cwd=project)
         apk=project/'app/build/outputs/apk/debug/app-debug.apk';bt=sdk/'build-tools/34.0.0'
         output=subprocess.check_output([str(bt/'apksigner'),'verify','--print-certs',str(apk)],text=True)
@@ -95,7 +95,7 @@ def main():
         manifest={'schema':1,'applicationId':PACKAGE,'versionCode':code,'versionName':version,'minSdk':26,'size':dest.stat().st_size,'sha256':hashlib.sha256(dest.read_bytes()).hexdigest(),'apkUrl':f'https://github.com/{repo}/releases/download/{tag}/{name}'}
         m=temp/'update.json';m.write_text(json.dumps(manifest,ensure_ascii=False,indent=2))
         # Draft first: phones cannot see partial or failed builds. Set latest only after all assets exist.
-        run(['gh','release','create',tag,str(dest),str(m),'--repo',repo,'--draft','--target',os.environ.get('GITHUB_SHA','main'),'--title',f'BIPADO DE ROTA VERSÃO {version}','--notes','VERSÃO '+version+': captura adaptada à tela, revisão manual, pacotes no mesmo endereço e CSV agrupado. APK assinado e verificado; instalar sobre a versão anterior para preservar os dados.'])
+        run(['gh','release','create',tag,str(dest),str(m),'--repo',repo,'--draft','--target',os.environ.get('GITHUB_SHA','main'),'--title',f'BIPADO DE ROTA VERSÃO {version}','--notes','VERSÃO '+version+': cartão único por endereço com os números agrupados, vibração mais perceptível e abertura do endereço antes de iniciar o mapa. APK assinado e verificado; instalar sobre a versão anterior para preservar os dados.'])
         run(['gh','release','edit',tag,'--repo',repo,'--draft=false','--latest'])
         print('Release publicada:',tag)
 
