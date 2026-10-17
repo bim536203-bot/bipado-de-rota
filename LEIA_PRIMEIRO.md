@@ -11,7 +11,7 @@ Repositório: bim536203-bot/bipado-de-rota. A configuração é realizada uma ú
 
 ## A cada atualização
 Atualizar o código a partir do projeto V5.13 ou posterior, comprimir o projeto completo e enviar substituindo `projeto.zip`. O nome desse arquivo deve permanecer igual. O código das quatro classes de atualização e as configurações Gradle precisam permanecer no projeto. O workflow rejeita um ZIP que remova esses componentes.
-A compilação aumenta automaticamente o versionCode; o nome visível combina a versão base do projeto e o código incremental. Após compilar, executar regressões, lint, verificar assinatura e alinhamento, publica APK e update.json juntos. Release em rascunho não aparece nos celulares. Uma compilação que falha não vira versão disponível.
+A compilação aumenta automaticamente o versionCode; o nome público é um inteiro (16, 17, 18...), sem código incremental no rodapé. O versionCode Android continua crescente separadamente. Após compilar, executar regressões, lint, verificar assinatura e alinhamento, publica APK e update.json juntos. Release em rascunho não aparece nos celulares. Uma compilação que falha não vira versão disponível.
 
 ## Comportamento do app
 Ao abrir, consulta a versão pela internet. Se há atualização, mostra tela obrigatória e ATUALIZAR, sem botão para ignorar. Se não consegue verificar, mantém bloqueado e mostra TENTAR NOVAMENTE. A indicação de atualização já detectada persiste entre reaberturas e não é anulada por resposta de versão mais antiga. Verificação de rede também ocorre ao iniciar/tocar no leitor e quando a conexão muda. Ao retornar à tela principal após mais de 15 segundos, a versão é consultada novamente.
@@ -21,3 +21,7 @@ O download confere tamanho, SHA-256, pacote, número da versão e certificado. O
 Testes de política local e extração segura de ZIP; compilação e lint Android. O fluxo real do GitHub e a instalação pelo atualizador precisam de repositório e segredos ativos e validação no Moto G8 Plus. Sem o endereço publicado, esta versão permanece bloqueada, conforme solicitado.
 O processo lê e executa o projeto enviado pelo dono do repositório. Somente quem deve publicar versões pode ter acesso de escrita ao repositório.
 GitHub Actions usa runner padrão ubuntu-24.04. Não usa Supabase nem Play Store.
+
+
+## VERSÃO 16
+O pacote projeto.zip contém as correções de captura/layout, edição manual, proteção de leitura ambígua, design de endereço não encontrado, cartões dos pacotes no mesmo endereço e CSV com um destino por endereço e Notes PACOTE 1-2-3. O publicador compila/linta o Android, executa 788 verificações Kotlin, compara a assinatura original e só publica a release após as verificações. Testar o fluxo real em aparelhos e a importação no Spoke após instalar; testes de lógica não substituem uso em dispositivo. O Android ainda pede confirmação de instalação.

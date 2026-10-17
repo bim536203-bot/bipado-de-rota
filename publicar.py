@@ -36,6 +36,12 @@ def latest(repo):
 
 def run(args,**kw): return subprocess.run(args,check=True,**kw)
 
+def public_version(config):
+    match=re.search(r'ciVersionName"\).*?getOrElse\("([^"]+)"',config)
+    if not match or not re.fullmatch(r'[1-9][0-9]*',match.group(1)):
+        raise ValueError('A versão pública deve ser um inteiro: 16, 17, 18...')
+    return match.group(1)
+
 def main():
     repo=os.environ['UPDATE_REPOSITORY']
     if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+',repo): raise ValueError('Repositório inválido')
@@ -55,9 +61,7 @@ def main():
         sdk=pathlib.Path(os.environ.get('ANDROID_HOME',os.environ.get('ANDROID_SDK_ROOT','')))
         if not (sdk/'build-tools/34.0.0/apksigner').exists(): raise ValueError('Android SDK ausente')
         (project/'local.properties').write_text('sdk.dir='+str(sdk)+'\n')
-        base_version=re.search(r'ciVersionName"\).*?getOrElse\("([^"]+)"',config)
-        if not base_version or not re.fullmatch(r'[0-9A-Za-z.+-]{1,50}',base_version.group(1)): raise ValueError('Nome de versão inválido')
-        version=f'{base_version.group(1)}-{code}'
+        version=public_version(config)
         args=['gradle','--no-daemon','-p',str(project),'-PbipadoSigningKey='+str(key),'-PciVersionCode='+str(code),'-PciVersionName='+version,'-PupdateRepository='+repo,'assembleDebug','lintDebug']
         run(args)
         # Compile/run pure Kotlin regression cases with the compiler already resolved by Gradle.
@@ -65,9 +69,22 @@ def main():
         pats=['org.jetbrains.kotlin/kotlin-compiler-embeddable/2.0.21','org.jetbrains.kotlin/kotlin-stdlib/2.0.21','org.jetbrains.kotlin/kotlin-script-runtime','org.jetbrains.kotlin/kotlin-reflect','org.jetbrains.intellij.deps/trove4j','org.jetbrains.kotlinx/kotlinx-coroutines-core-jvm','org.jetbrains/annotations']
         jars=[str(p) for pattern in pats for p in (cache/pattern).rglob('*.jar')]
         stdlib=next((cache/'org.jetbrains.kotlin/kotlin-stdlib/2.0.21').rglob('*.jar'));tests=temp/'tests.jar'
-        sources=[src/(n+'.kt') for n in ['AddressExtractor','OcrLayout','AddressIdentity','AddressText','GeoAddress','UpdatePolicy']]+[project/n for n in ['geo_regression.kt','address_parser_test.kt','regression.kt','duplicate_regression.kt','screenshot_replay.kt','update_regression.kt']]
+        sources=[src/(n+'.kt') for n in ['AddressExtractor','OcrLayout','AddressIdentity','AddressText','GeoAddress','UpdatePolicy','CaptureAddressValidation','ManualAddressValidation','DuplicatePackageLabel']]+[project/n for n in ['geo_regression.kt','address_parser_test.kt','regression.kt','duplicate_regression.kt','screenshot_replay.kt','update_regression.kt','screen_layout_regression.kt','manual_address_regression.kt','capture_safety_regression.kt']]
         run(['java','-cp',os.pathsep.join(jars),'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler','-no-stdlib','-no-reflect','-classpath',str(stdlib),'-d',str(tests),*map(str,sources)])
-        for test in ['Geo_regressionKt','Address_parser_testKt','RegressionKt','Duplicate_regressionKt','Screenshot_replayKt','Update_regressionKt']:run(['java','-cp',str(tests)+os.pathsep+str(stdlib),test],cwd=project)
+        for test in ['Geo_regressionKt','Address_parser_testKt','RegressionKt','Duplicate_regressionKt','Screenshot_replayKt','Update_regressionKt','Screen_layout_regressionKt','Manual_address_regressionKt','Capture_safety_regressionKt']:run(['java','-cp',str(tests)+os.pathsep+str(stdlib),test],cwd=project)
+        # Test real Store + CSV code against an in-memory Android preference boundary.
+        jsonjar=temp/'json-20240303.jar'
+        with urllib.request.urlopen('https://repo.maven.apache.org/maven2/org/json/json/20240303/json-20240303.jar',timeout=30) as response:
+            jsonjar.write_bytes(response.read())
+        if hashlib.sha256(jsonjar.read_bytes()).hexdigest()!='3cf6cd6892e32e2b4c1c39e0f52f5248a2f5b37646fdfbb79a66b46b618414ed':
+            raise ValueError('Dependência de testes inválida')
+        storetests=temp/'store-tests.jar'
+        storesrc=[src/(n+'.kt') for n in ['Store','AddressIdentity','AddressText','DuplicatePackageLabel','RouteCsv']]
+        storesrc += [project/'verification/store'/n for n in ['Context.kt','StoreSequenceRegression.kt','SameAddressRegression.kt','RouteCsvRegression.kt']]
+        testcp=str(stdlib)+os.pathsep+str(jsonjar)
+        run(['java','-cp',os.pathsep.join(jars),'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler','-no-stdlib','-no-reflect','-classpath',testcp,'-d',str(storetests),*map(str,storesrc)])
+        for test in ['SameAddressRegressionKt','StoreSequenceRegressionKt','RouteCsvRegressionKt']:
+            run(['java','-cp',str(storetests)+os.pathsep+testcp,test],cwd=project)
         apk=project/'app/build/outputs/apk/debug/app-debug.apk';bt=sdk/'build-tools/34.0.0'
         output=subprocess.check_output([str(bt/'apksigner'),'verify','--print-certs',str(apk)],text=True)
         if f'certificate SHA-256 digest: {CERT}' not in output: raise ValueError('Assinatura diferente da versão instalada')
@@ -78,8 +95,9 @@ def main():
         manifest={'schema':1,'applicationId':PACKAGE,'versionCode':code,'versionName':version,'minSdk':26,'size':dest.stat().st_size,'sha256':hashlib.sha256(dest.read_bytes()).hexdigest(),'apkUrl':f'https://github.com/{repo}/releases/download/{tag}/{name}'}
         m=temp/'update.json';m.write_text(json.dumps(manifest,ensure_ascii=False,indent=2))
         # Draft first: phones cannot see partial or failed builds. Set latest only after all assets exist.
-        run(['gh','release','create',tag,str(dest),str(m),'--repo',repo,'--draft','--target',os.environ.get('GITHUB_SHA','main'),'--title',f'BIPADO DE ROTA {version}','--notes','Atualização obrigatória. APK assinado e verificado; dados preservados ao instalar sobre a versão anterior.'])
+        run(['gh','release','create',tag,str(dest),str(m),'--repo',repo,'--draft','--target',os.environ.get('GITHUB_SHA','main'),'--title',f'BIPADO DE ROTA VERSÃO {version}','--notes','VERSÃO '+version+': captura adaptada à tela, revisão manual, pacotes no mesmo endereço e CSV agrupado. APK assinado e verificado; instalar sobre a versão anterior para preservar os dados.'])
         run(['gh','release','edit',tag,'--repo',repo,'--draft=false','--latest'])
         print('Release publicada:',tag)
 
 if __name__=='__main__':main()
+
