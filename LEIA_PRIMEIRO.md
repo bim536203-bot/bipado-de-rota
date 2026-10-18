@@ -1,27 +1,23 @@
-# BIPADO DE ROTA — atualização obrigatória e compilação por ZIP
+# BIPADO DE ROTA — VERSÃO 20
 
-Repositório: bim536203-bot/bipado-de-rota. A configuração é realizada uma única vez. O APK V5.13 só deve ser distribuído depois da primeira release publicada: ele bloqueia quando não consegue verificar a versão.
+## Um único ZIP atualiza Android e iPhone
 
-## Configuração inicial (uma única vez)
-1. Criar repositório público `bim536203-bot/bipado-de-rota`, branch `main`.
-2. Enviar os arquivos deste pacote preservando os caminhos `.github/workflows/compilar.yml`, `publicar.py` e `projeto.zip`. Extrair este pacote antes de enviar os arquivos; enviar o ZIP de configuração inteiro não instala o workflow. Ativar GitHub Actions se solicitado.
-3. Em Settings > Secrets and variables > Actions, criar `GEOAPIFY_API_KEY` e `BIPADO_SIGNING_KEY_B64` (Base64 do JKS original). Não enviar o JKS, a chave Geoapify ou seu Base64 para os arquivos públicos do repositório. A assinatura original foi preservada; o publicador compara o certificado com o APK V5.12.
-4. Rodar Actions > Compilar e publicar BIPADO DE ROTA > Run workflow para a primeira release. As seguintes rodam ao substituir `projeto.zip`.
-5. Depois da primeira execução bem-sucedida, instalar o APK publicado sobre a V5.12, sem desinstalar. Isso ativa a atualização dentro do app.
+Nas próximas atualizações, envie o novo projeto completo como **projeto.zip**, substituindo o arquivo na raiz do repositório, e confirme o commit em main. Não extraia o ZIP no GitHub. O ZIP inclui o projeto Android e a pasta ios; mantenha os dois juntos.
 
-## A cada atualização
-Atualizar o código a partir do projeto V5.13 ou posterior, comprimir o projeto completo e enviar substituindo `projeto.zip`. O nome desse arquivo deve permanecer igual. O código das quatro classes de atualização e as configurações Gradle precisam permanecer no projeto. O workflow rejeita um ZIP que remova esses componentes.
-A compilação aumenta automaticamente o versionCode; o nome público é um inteiro (16, 17, 18...), sem código incremental no rodapé. O versionCode Android continua crescente separadamente. Após compilar, executar regressões, lint, verificar assinatura e alinhamento, publica APK e update.json juntos. Release em rascunho não aparece nos celulares. Uma compilação que falha não vira versão disponível.
+O GitHub testa e compila o Android, verifica a assinatura original e publica APK + update.json. Depois publica o aplicativo web do iPhone pelo GitHub Pages. A atualização Android continua sendo oferecida no aplicativo instalado. No iPhone aparece NOVA VERSÃO DISPONÍVEL e o botão ATUALIZAR; a lista importada permanece no aparelho.
 
-## Comportamento do app
-Ao abrir, consulta a versão pela internet. Se há atualização, mostra tela obrigatória e ATUALIZAR, sem botão para ignorar. Se não consegue verificar, mantém bloqueado e mostra TENTAR NOVAMENTE. A indicação de atualização já detectada persiste entre reaberturas e não é anulada por resposta de versão mais antiga. Verificação de rede também ocorre ao iniciar/tocar no leitor e quando a conexão muda. Ao retornar à tela principal após mais de 15 segundos, a versão é consultada novamente.
-O download confere tamanho, SHA-256, pacote, número da versão e certificado. O Android ainda exige autorizar esta fonte de instalação e confirmar a instalação. Cancelar ou negar a instalação mantém o bloqueio. Dados são preservados ao instalar sobre a mesma assinatura.
+Use números inteiros crescentes e iguais nos dois aplicativos: 20, 21, 22… No Android altere ciVersionName em app/build.gradle.kts. Na pasta ios/dist atualize version.js, version.json, sw.js e a etiqueta inicial do index.html. Nunca reutilize um número publicado.
 
-## Validação e limites
-Testes de política local e extração segura de ZIP; compilação e lint Android. O fluxo real do GitHub e a instalação pelo atualizador precisam de repositório e segredos ativos e validação no Moto G8 Plus. Sem o endereço publicado, esta versão permanece bloqueada, conforme solicitado.
-O processo lê e executa o projeto enviado pelo dono do repositório. Somente quem deve publicar versões pode ter acesso de escrita ao repositório.
-GitHub Actions usa runner padrão ubuntu-24.04. Não usa Supabase nem Play Store.
+## Usar no iPhone
 
+Abra o link do GitHub Pages no Safari, toque em Compartilhar → Adicionar à Tela de Início. Abra uma vez com internet para preparar o modo offline. No Android use BAIXAR ROTAS, transfira o CSV ao iPhone e toque em IMPORTAR ROTAS CSV.
 
-## VERSÃO 19
-O pacote projeto.zip contém as correções de captura/layout, edição manual, proteção de leitura ambígua, design de endereço não encontrado, cartões dos pacotes no mesmo endereço e CSV com um destino por endereço e Notes PACOTE 1-2-3. O publicador compila/linta o Android, executa 1032 verificações Kotlin, compara a assinatura original e só publica a release após as verificações. Testar o fluxo real em aparelhos e a importação no Spoke após instalar; testes de lógica não substituem uso em dispositivo. O Android ainda pede confirmação de instalação.
+A versão iPhone consulta, pesquisa, edita, adiciona manualmente, apaga e exporta rotas para o Spoke. Endereços repetidos formam um cartão e uma parada com descrição PACOTE 1-2-3. Listas substituídas ou apagadas ficam no histórico por 24 horas. Não possui captura/OCR nem ícone flutuante. Os dados ficam neste aparelho; não há sincronização automática entre celulares. Guarde o CSV original. Limpar os dados do site/aparelho remove o armazenamento local.
+
+## Configuração inicial (já preparada)
+
+Settings → Pages → Source: GitHub Actions. O workflow compilar.yml publica os dois aplicativos. Preserve os segredos de assinatura e mapas já configurados; nunca os coloque no ZIP. Se apenas a etapa de publicação do site falhar, use Re-run failed jobs. Uma repetição do mesmo commit reconhece o Android já publicado e prepara o site novamente.
+
+## Verificação
+
+Testes Kotlin de regressão + lint Android; testes Node do CSV real exportado pelo Android, agrupamento, histórico, edição, IndexedDB transacional, interface DOM e atualização offline. Os testes automatizados não substituem uma conferência física no Safari/iPhone.
