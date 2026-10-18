@@ -2,10 +2,10 @@ name: Compilar e publicar BIPADO DE ROTA
 on:
   push:
     branches: [main]
-    paths: ['projeto.zip', '.github/workflows/compilar.yml']
+    paths: ['projeto.zip', 'publicar.py', '.github/workflows/compilar.yml']
   workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
 concurrency:
   group: publicar-bipado
   cancel-in-progress: false
@@ -13,24 +13,49 @@ jobs:
   apk:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
       - uses: android-actions/setup-android@v4
-      - name: Preparar SDK
-        run: sdkmanager 'platforms;android-35' 'build-tools;34.0.0'
-      - name: Validar recebimento do ZIP
+      - name: Instalar plataforma Android
+        run: sdkmanager "platforms;android-35" "build-tools;34.0.0"
+      - name: Testar proteção do ZIP e versões
         run: python3 -m unittest discover -s . -v
-      - name: Testar, assinar e publicar
+      - name: Testar iPhone e publicar Android assinado
+        run: python3 publicar.py
         env:
           GH_TOKEN: ${{ github.token }}
           UPDATE_REPOSITORY: ${{ github.repository }}
           GEOAPIFY_API_KEY: ${{ secrets.GEOAPIFY_API_KEY }}
           BIPADO_SIGNING_KEY_B64: ${{ secrets.BIPADO_SIGNING_KEY_B64 }}
-        run: python3 publicar.py
+      - name: Preparar site iPhone
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: web-dist
+  ios:
+    needs: apk
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+      - name: Publicar aplicativo iPhone
+        id: deployment
+        uses: actions/deploy-pages@v4

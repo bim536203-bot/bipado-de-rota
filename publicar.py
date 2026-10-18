@@ -1,5 +1,5 @@
 """Owner-controlled source ZIP -> signed APK -> complete GitHub release.
-No PR execution, no secrets in source/release assets. Requires the V5.13 updater.
+One ZIP publishes Android and the iPhone PWA. No PR execution or secrets in assets.
 """
 import base64, hashlib, json, os, pathlib, re, shutil, stat, subprocess, tempfile, urllib.error, urllib.request, zipfile
 ROOT=pathlib.Path(__file__).resolve().parent
@@ -42,6 +42,28 @@ def public_version(config):
         raise ValueError('A versão pública deve ser um inteiro: 16, 17, 18...')
     return match.group(1)
 
+def prepare_web(project, version, destination):
+    ios=project/'ios'; web=ios/'dist'
+    if not (ios/'package-lock.json').is_file(): raise ValueError('ZIP sem versão iPhone ou lockfile de testes')
+    if json.loads((web/'version.json').read_text()).get('version')!=version: raise ValueError('Versão iPhone diferente do Android')
+    if f"APP_VERSION = '{version}'" not in (web/'version.js').read_text() or f"APP_VERSION = '{version}'" not in (web/'sw.js').read_text(): raise ValueError('Cache iPhone com versão incorreta')
+    for name in ['index.html','manifest.webmanifest','app.js','storage.js','core.js','updates.js','style.css','assets/apple-touch-icon.png']:
+        if not (web/name).is_file(): raise ValueError('Arquivo iPhone ausente: '+name)
+    run(['npm','ci','--ignore-scripts','--no-audit','--no-fund'],cwd=ios)
+    run(['npm','test'],cwd=ios)
+    if destination.exists(): shutil.rmtree(destination)
+    shutil.copytree(web,destination)
+
+def already_published(repo, version, commit):
+    result=subprocess.run(['gh','release','view','v'+version,'--repo',repo,'--json','isDraft,targetCommitish'],capture_output=True,text=True)
+    if result.returncode:
+        if 'release not found' in result.stderr.lower() or 'not found' in result.stderr.lower(): return False
+        raise ValueError('Não foi possível verificar a versão já publicada: '+result.stderr)
+    release=json.loads(result.stdout)
+    if not release['isDraft'] and commit and release['targetCommitish']==commit:
+        return True
+    raise ValueError('Essa versão já existe. Use o próximo número inteiro antes de publicar novamente.')
+
 def main():
     repo=os.environ['UPDATE_REPOSITORY']
     if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+',repo): raise ValueError('Repositório inválido')
@@ -56,6 +78,10 @@ def main():
         config=(project/'app/build.gradle.kts').read_text()
         for marker in ['ciVersionCode','ciVersionName','updateRepository','bipadoSigningKey']:
             if marker not in config: raise ValueError('Projeto sem configuração automática: '+marker)
+        version=public_version(config)
+        prepare_web(project,version,ROOT/'web-dist')
+        if already_published(repo,version,os.environ.get('GITHUB_SHA','')):
+            print('Android já publicado neste commit; site preparado novamente.');return
         # Key exists only in the runner temporary directory; do not print it.
         key=temp/'signature.jks';key.write_bytes(base64.b64decode(os.environ['BIPADO_SIGNING_KEY_B64'],validate=True));key.chmod(0o600)
         sdk=pathlib.Path(os.environ.get('ANDROID_HOME',os.environ.get('ANDROID_SDK_ROOT','')))
@@ -80,11 +106,14 @@ def main():
             raise ValueError('Dependência de testes inválida')
         storetests=temp/'store-tests.jar'
         storesrc=[src/(n+'.kt') for n in ['Store','AddressIdentity','AddressText','DuplicatePackageLabel','RouteCsv']]
-        storesrc += [project/'verification/store'/n for n in ['Context.kt','StoreSequenceRegression.kt','SameAddressRegression.kt','RouteCsvRegression.kt','GroupedCardsRegression.kt']]
+        storesrc += [project/'verification/store'/n for n in ['Context.kt','StoreSequenceRegression.kt','SameAddressRegression.kt','RouteCsvRegression.kt','GroupedCardsRegression.kt','AndroidCsvFixture.kt']]
         testcp=str(stdlib)+os.pathsep+str(jsonjar)
         run(['java','-cp',os.pathsep.join(jars),'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler','-no-stdlib','-no-reflect','-classpath',testcp,'-d',str(storetests),*map(str,storesrc)])
         for test in ['SameAddressRegressionKt','StoreSequenceRegressionKt','RouteCsvRegressionKt','GroupedCardsRegressionKt']:
             run(['java','-cp',str(storetests)+os.pathsep+testcp,test],cwd=project)
+        csv_fixture=temp/'android-export.csv'
+        run(['java','-cp',str(storetests)+os.pathsep+testcp,'AndroidCsvFixtureKt',str(csv_fixture)],cwd=project)
+        if csv_fixture.read_bytes()!=(project/'ios/tests/fixtures/android-export.csv').read_bytes(): raise ValueError('CSV Android diferente da referência testada no iPhone')
         apk=project/'app/build/outputs/apk/debug/app-debug.apk';bt=sdk/'build-tools/34.0.0'
         output=subprocess.check_output([str(bt/'apksigner'),'verify','--print-certs',str(apk)],text=True)
         if f'certificate SHA-256 digest: {CERT}' not in output: raise ValueError('Assinatura diferente da versão instalada')
@@ -95,7 +124,7 @@ def main():
         manifest={'schema':1,'applicationId':PACKAGE,'versionCode':code,'versionName':version,'minSdk':26,'size':dest.stat().st_size,'sha256':hashlib.sha256(dest.read_bytes()).hexdigest(),'apkUrl':f'https://github.com/{repo}/releases/download/{tag}/{name}'}
         m=temp/'update.json';m.write_text(json.dumps(manifest,ensure_ascii=False,indent=2))
         # Draft first: phones cannot see partial or failed builds. Set latest only after all assets exist.
-        run(['gh','release','create',tag,str(dest),str(m),'--repo',repo,'--draft','--target',os.environ.get('GITHUB_SHA','main'),'--title',f'BIPADO DE ROTA VERSÃO {version}','--notes','VERSÃO '+version+': corrige o símbolo de navegação lido como T) no endereço e solicita revisão quando a leitura permanece incerta. Mantém cartões agrupados e demais ajustes da versão anterior. APK assinado e verificado; instalar sobre a versão anterior para preservar os dados.'])
+        run(['gh','release','create',tag,str(dest),str(m),'--repo',repo,'--draft','--target',os.environ.get('GITHUB_SHA','main'),'--title',f'BIPADO DE ROTA VERSÃO {version}','--notes','VERSÃO '+version+': acrescenta consulta no iPhone por importação CSV, agrupamento de pacotes, edição, exportação Spoke, histórico de 24h e consulta offline. Um ZIP publica Android e iPhone. Mantém as correções Android da versão 19. APK assinado e verificado; instalar sobre a versão anterior para preservar os dados.'])
         run(['gh','release','edit',tag,'--repo',repo,'--draft=false','--latest'])
         print('Release publicada:',tag)
 
