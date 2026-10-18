@@ -130,11 +130,12 @@ def main():
         manifest={'schema':1,'applicationId':PACKAGE,'versionCode':code,'versionName':version,'minSdk':26,'size':dest.stat().st_size,'sha256':hashlib.sha256(dest.read_bytes()).hexdigest(),'apkUrl':f'https://github.com/{repo}/releases/download/{tag}/{name}'}
         m=temp/'update.json';m.write_text(json.dumps(manifest,ensure_ascii=False,indent=2))
         # Draft first: phones cannot see partial or failed builds. Set latest only after all assets exist.
-        run(['gh','release','create',tag,str(dest),str(m),'--repo',repo,'--draft','--target',os.environ.get('GITHUB_SHA','main'),'--title',f'BIPADO DE ROTA VERSÃO {version}','--notes','VERSÃO '+version+': atualiza a tela Endereços salvos com cabeçalho fixo de ícones azuis, botão IMPORTAR PARA ROTA SPOKE rolável, vibração e efeito de toque. Preserva o envio CSV direcionado ao Spoke e o compartilhamento alternativo. Compilação, assinatura e regressões verificadas; visual e comportamento no celular ainda precisam de validação. Instalar sobre a versão anterior para preservar os dados.'])
+        run(['gh','release','create',tag,str(dest),str(m),'--repo',repo,'--draft','--target',os.environ.get('GITHUB_SHA','main'),'--title',f'BIPADO DE ROTA VERSÃO {version}','--notes','VERSÃO '+version+': leva ao iPhone o novo design de Endereços salvos: ícones fixos, exportação Spoke com a mesma arte Android, grupos em preto/amarelo, pacotes pulados e ripple. Busca manual selecionar/SALVAR/CONFIRMAR, edição, histórico e CSV preservados. No iOS, o destinatário do compartilhamento é escolhido no menu do sistema; o bipador continua exclusivo Android. APK assinado e regressões verificadas. Validação em celular físico pendente. Atualizar sem desinstalar para preservar dados.'])
         run(['gh','release','edit',tag,'--repo',repo,'--draft=false','--latest'])
         print('Release publicada:',tag)
 
 if __name__=='__main__':main()
+
 
 
 
