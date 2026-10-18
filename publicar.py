@@ -111,6 +111,12 @@ def main():
         run(['java','-cp',os.pathsep.join(jars),'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler','-no-stdlib','-no-reflect','-classpath',testcp,'-d',str(storetests),*map(str,storesrc)])
         for test in ['SameAddressRegressionKt','StoreSequenceRegressionKt','RouteCsvRegressionKt','GroupedCardsRegressionKt']:
             run(['java','-cp',str(storetests)+os.pathsep+testcp,test],cwd=project)
+        # The Intent boundary double is outside app/src; execute the real dispatch helper.
+        if (src/'SpokeShare.kt').is_file():
+            spoketests=temp/'spoke-tests.jar'
+            spokesrc=[src/'SpokeShare.kt', project/'verification/spoke/Intent.kt', project/'verification/spoke/SpokeShareRegression.kt']
+            run(['java','-cp',os.pathsep.join(jars),'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler','-no-stdlib','-no-reflect','-classpath',str(stdlib),'-d',str(spoketests),*map(str,spokesrc)])
+            run(['java','-cp',str(spoketests)+os.pathsep+str(stdlib),'SpokeShareRegressionKt'],cwd=project)
         csv_fixture=temp/'android-export.csv'
         run(['java','-cp',str(storetests)+os.pathsep+testcp,'AndroidCsvFixtureKt',str(csv_fixture)],cwd=project)
         if csv_fixture.read_bytes()!=(project/'ios/tests/fixtures/android-export.csv').read_bytes(): raise ValueError('CSV Android diferente da referência testada no iPhone')
@@ -124,9 +130,10 @@ def main():
         manifest={'schema':1,'applicationId':PACKAGE,'versionCode':code,'versionName':version,'minSdk':26,'size':dest.stat().st_size,'sha256':hashlib.sha256(dest.read_bytes()).hexdigest(),'apkUrl':f'https://github.com/{repo}/releases/download/{tag}/{name}'}
         m=temp/'update.json';m.write_text(json.dumps(manifest,ensure_ascii=False,indent=2))
         # Draft first: phones cannot see partial or failed builds. Set latest only after all assets exist.
-        run(['gh','release','create',tag,str(dest),str(m),'--repo',repo,'--draft','--target',os.environ.get('GITHUB_SHA','main'),'--title',f'BIPADO DE ROTA VERSÃO {version}','--notes','VERSÃO '+version+': acrescenta consulta no iPhone por importação CSV, agrupamento de pacotes, edição, exportação Spoke, histórico de 24h e consulta offline. Um ZIP publica Android e iPhone. Mantém as correções Android da versão 19. APK assinado e verificado; instalar sobre a versão anterior para preservar os dados.'])
+        run(['gh','release','create',tag,str(dest),str(m),'--repo',repo,'--draft','--target',os.environ.get('GITHUB_SHA','main'),'--title',f'BIPADO DE ROTA VERSÃO {version}','--notes','VERSÃO '+version+': tenta abrir o Spoke diretamente com o CSV no Android e mantém o seletor de compartilhamento como alternativa. Preserva botão, ordem, pacotes e confirmações internas do Spoke. Backup da versão 27 realizado. APK compilado, assinado e verificado; abertura real no Spoke ainda requer validação no celular. Instalar sobre a versão anterior para preservar os dados.'])
         run(['gh','release','edit',tag,'--repo',repo,'--draft=false','--latest'])
         print('Release publicada:',tag)
 
 if __name__=='__main__':main()
+
 
