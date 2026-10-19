@@ -117,10 +117,11 @@ def main():
             spokesrc=[src/'SpokeShare.kt', project/'verification/spoke/Intent.kt', project/'verification/spoke/SpokeShareRegression.kt']
             run(['java','-cp',os.pathsep.join(jars),'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler','-no-stdlib','-no-reflect','-classpath',str(stdlib),'-d',str(spoketests),*map(str,spokesrc)])
             run(['java','-cp',str(spoketests)+os.pathsep+str(stdlib),'SpokeShareRegressionKt'],cwd=project)
-        csv_fixture=temp/'android-export.csv';phone_fixture=temp/'android-whatsapp-export.csv'
-        run(['java','-cp',str(storetests)+os.pathsep+testcp,'AndroidCsvFixtureKt',str(csv_fixture),str(phone_fixture)],cwd=project)
+        csv_fixture=temp/'android-export.csv';phone_fixture=temp/'android-whatsapp-export.csv';spoke_fixture=temp/'android-spoke-export.csv'
+        run(['java','-cp',str(storetests)+os.pathsep+testcp,'AndroidCsvFixtureKt',str(csv_fixture),str(phone_fixture),str(spoke_fixture)],cwd=project)
         if csv_fixture.read_bytes()!=(project/'ios/tests/fixtures/android-export.csv').read_bytes(): raise ValueError('CSV Android diferente da referência testada no iPhone')
         if phone_fixture.read_bytes()!=(project/'ios/tests/fixtures/android-whatsapp-export.csv').read_bytes(): raise ValueError('CSV WhatsApp Android diferente do iPhone')
+        if spoke_fixture.read_bytes()!=(project/'ios/tests/fixtures/android-spoke-export.csv').read_bytes(): raise ValueError('CSV para Spoke diferente entre Android e iPhone')
         apk=project/'app/build/outputs/apk/debug/app-debug.apk';bt=sdk/'build-tools/34.0.0'
         output=subprocess.check_output([str(bt/'apksigner'),'verify','--print-certs',str(apk)],text=True)
         if f'certificate SHA-256 digest: {CERT}' not in output: raise ValueError('Assinatura diferente da versão instalada')
@@ -131,7 +132,7 @@ def main():
         manifest={'schema':1,'applicationId':PACKAGE,'versionCode':code,'versionName':version,'minSdk':26,'size':dest.stat().st_size,'sha256':hashlib.sha256(dest.read_bytes()).hexdigest(),'apkUrl':f'https://github.com/{repo}/releases/download/{tag}/{name}'}
         m=temp/'update.json';m.write_text(json.dumps(manifest,ensure_ascii=False,indent=2))
         # Draft first: phones cannot see partial or failed builds. Set latest only after all assets exist.
-        run(['gh','release','create',tag,str(dest),str(m),'--repo',repo,'--draft','--target',os.environ.get('GITHUB_SHA','main'),'--title',f'BIPADO DE ROTA VERSÃO {version}','--notes','VERSÃO '+version+': confirmação de endereço sem mini mapa, com check verde de sucesso ou X vermelho de não encontrado; botão de exportar em cinza escuro, ícone WhatsApp corrigido e resposta visual rápida ao toque no Android e iPhone, sem atrasar as ações. Busca, CSV, pacotes e contatos preservados. Testes automatizados e assinatura verificados; validação em celular físico pendente. Atualize sem desinstalar.'])
+        run(['gh','release','create',tag,str(dest),str(m),'--repo',repo,'--draft','--target',os.environ.get('GITHUB_SHA','main'),'--title',f'BIPADO DE ROTA VERSÃO {version}','--notes','VERSÃO '+version+': corrige exportação para o Spoke: envia somente endereços e números dos pacotes, sem contatos WhatsApp. BAIXAR ROTAS mantém contatos para transferir entre Android e iPhone. Design, pacotes, ordem e demais funções preservados. Testes automatizados e assinatura verificados; valide o novo CSV no Spoke no celular. Atualize sem desinstalar.'])
         run(['gh','release','edit',tag,'--repo',repo,'--draft=false','--latest'])
         print('Release publicada:',tag)
 
