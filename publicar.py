@@ -105,11 +105,11 @@ def main():
         if hashlib.sha256(jsonjar.read_bytes()).hexdigest()!='3cf6cd6892e32e2b4c1c39e0f52f5248a2f5b37646fdfbb79a66b46b618414ed':
             raise ValueError('Dependência de testes inválida')
         storetests=temp/'store-tests.jar'
-        storesrc=[src/(n+'.kt') for n in ['Store','AddressIdentity','AddressText','DuplicatePackageLabel','RouteCsv']]
-        storesrc += [project/'verification/store'/n for n in ['Context.kt','StoreSequenceRegression.kt','SameAddressRegression.kt','RouteCsvRegression.kt','GroupedCardsRegression.kt','AndroidCsvFixture.kt']]
+        storesrc=[src/(n+'.kt') for n in ['Store','AddressIdentity','AddressText','DuplicatePackageLabel','RouteCsv','WhatsappPolicy']]
+        storesrc += [project/'verification/store'/n for n in ['Context.kt','StoreSequenceRegression.kt','SameAddressRegression.kt','RouteCsvRegression.kt','GroupedCardsRegression.kt','AndroidCsvFixture.kt','WhatsappRegression.kt']]
         testcp=str(stdlib)+os.pathsep+str(jsonjar)
         run(['java','-cp',os.pathsep.join(jars),'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler','-no-stdlib','-no-reflect','-classpath',testcp,'-d',str(storetests),*map(str,storesrc)])
-        for test in ['SameAddressRegressionKt','StoreSequenceRegressionKt','RouteCsvRegressionKt','GroupedCardsRegressionKt']:
+        for test in ['SameAddressRegressionKt','StoreSequenceRegressionKt','RouteCsvRegressionKt','GroupedCardsRegressionKt','WhatsappRegressionKt']:
             run(['java','-cp',str(storetests)+os.pathsep+testcp,test],cwd=project)
         # The Intent boundary double is outside app/src; execute the real dispatch helper.
         if (src/'SpokeShare.kt').is_file():
@@ -117,9 +117,10 @@ def main():
             spokesrc=[src/'SpokeShare.kt', project/'verification/spoke/Intent.kt', project/'verification/spoke/SpokeShareRegression.kt']
             run(['java','-cp',os.pathsep.join(jars),'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler','-no-stdlib','-no-reflect','-classpath',str(stdlib),'-d',str(spoketests),*map(str,spokesrc)])
             run(['java','-cp',str(spoketests)+os.pathsep+str(stdlib),'SpokeShareRegressionKt'],cwd=project)
-        csv_fixture=temp/'android-export.csv'
-        run(['java','-cp',str(storetests)+os.pathsep+testcp,'AndroidCsvFixtureKt',str(csv_fixture)],cwd=project)
+        csv_fixture=temp/'android-export.csv';phone_fixture=temp/'android-whatsapp-export.csv'
+        run(['java','-cp',str(storetests)+os.pathsep+testcp,'AndroidCsvFixtureKt',str(csv_fixture),str(phone_fixture)],cwd=project)
         if csv_fixture.read_bytes()!=(project/'ios/tests/fixtures/android-export.csv').read_bytes(): raise ValueError('CSV Android diferente da referência testada no iPhone')
+        if phone_fixture.read_bytes()!=(project/'ios/tests/fixtures/android-whatsapp-export.csv').read_bytes(): raise ValueError('CSV WhatsApp Android diferente do iPhone')
         apk=project/'app/build/outputs/apk/debug/app-debug.apk';bt=sdk/'build-tools/34.0.0'
         output=subprocess.check_output([str(bt/'apksigner'),'verify','--print-certs',str(apk)],text=True)
         if f'certificate SHA-256 digest: {CERT}' not in output: raise ValueError('Assinatura diferente da versão instalada')
@@ -130,7 +131,7 @@ def main():
         manifest={'schema':1,'applicationId':PACKAGE,'versionCode':code,'versionName':version,'minSdk':26,'size':dest.stat().st_size,'sha256':hashlib.sha256(dest.read_bytes()).hexdigest(),'apkUrl':f'https://github.com/{repo}/releases/download/{tag}/{name}'}
         m=temp/'update.json';m.write_text(json.dumps(manifest,ensure_ascii=False,indent=2))
         # Draft first: phones cannot see partial or failed builds. Set latest only after all assets exist.
-        run(['gh','release','create',tag,str(dest),str(m),'--repo',repo,'--draft','--target',os.environ.get('GITHUB_SHA','main'),'--title',f'BIPADO DE ROTA VERSÃO {version}','--notes','VERSÃO '+version+': melhora busca por número e fragmentos curtos no Android e iPhone, com catálogo local parcial de ruas de Boa Vista e consulta online complementar. Casos 160 das, 1600 gl e 56 o verificados em testes automatizados; CEPs da fonte preservados, números de casas não confirmados continuam aproximados. Fluxo selecionar/SALVAR/mapa/CONFIRMAR, design, CSV e pacotes mantidos. Validação física no celular pendente. Atualize sem desinstalar.'])
+        run(['gh','release','create',tag,str(dest),str(m),'--repo',repo,'--draft','--target',os.environ.get('GITHUB_SHA','main'),'--title',f'BIPADO DE ROTA VERSÃO {version}','--notes','VERSÃO '+version+': WhatsApp por pacote: cadeado Android, captura OCR pelo ícone abaixo do bipador com movimento conjunto, proteção contra troca de pacote e sobrescrita. Android e iPhone mantêm contatos no CSV e histórico, com ícone para abrir a conversa e mensagem preenchida; envio manual. Sem nuvem. Testes automatizados e assinatura verificados; captura em Android físico e importação no Spoke precisam de validação no celular. Atualize sem desinstalar.'])
         run(['gh','release','edit',tag,'--repo',repo,'--draft=false','--latest'])
         print('Release publicada:',tag)
 
