@@ -105,11 +105,11 @@ def main():
         if hashlib.sha256(jsonjar.read_bytes()).hexdigest()!='3cf6cd6892e32e2b4c1c39e0f52f5248a2f5b37646fdfbb79a66b46b618414ed':
             raise ValueError('Dependência de testes inválida')
         storetests=temp/'store-tests.jar'
-        storesrc=[src/(n+'.kt') for n in ['Store','AddressIdentity','AddressText','DuplicatePackageLabel','RouteCsv','WhatsappPolicy']]
-        storesrc += [project/'verification/store'/n for n in ['Context.kt','StoreSequenceRegression.kt','SameAddressRegression.kt','RouteCsvRegression.kt','GroupedCardsRegression.kt','AndroidCsvFixture.kt','WhatsappRegression.kt']]
+        storesrc=[src/(n+'.kt') for n in ['Store','AddressIdentity','AddressText','DuplicatePackageLabel','RouteCsv','WhatsappPolicy','AccountWire','UsernamePolicy']]
+        storesrc += [project/'verification/store'/n for n in ['Context.kt','StoreSequenceRegression.kt','SameAddressRegression.kt','RouteCsvRegression.kt','GroupedCardsRegression.kt','AndroidCsvFixture.kt','WhatsappRegression.kt','AccountWireRegression.kt']]
         testcp=str(stdlib)+os.pathsep+str(jsonjar)
         run(['java','-cp',os.pathsep.join(jars),'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler','-no-stdlib','-no-reflect','-classpath',testcp,'-d',str(storetests),*map(str,storesrc)])
-        for test in ['SameAddressRegressionKt','StoreSequenceRegressionKt','RouteCsvRegressionKt','GroupedCardsRegressionKt','WhatsappRegressionKt']:
+        for test in ['SameAddressRegressionKt','StoreSequenceRegressionKt','RouteCsvRegressionKt','GroupedCardsRegressionKt','WhatsappRegressionKt','AccountWireRegressionKt']:
             run(['java','-cp',str(storetests)+os.pathsep+testcp,test],cwd=project)
         # The Intent boundary double is outside app/src; execute the real dispatch helper.
         if (src/'SpokeShare.kt').is_file():
@@ -132,7 +132,7 @@ def main():
         manifest={'schema':1,'applicationId':PACKAGE,'versionCode':code,'versionName':version,'minSdk':26,'size':dest.stat().st_size,'sha256':hashlib.sha256(dest.read_bytes()).hexdigest(),'apkUrl':f'https://github.com/{repo}/releases/download/{tag}/{name}'}
         m=temp/'update.json';m.write_text(json.dumps(manifest,ensure_ascii=False,indent=2))
         # Draft first: phones cannot see partial or failed builds. Set latest only after all assets exist.
-        run(['gh','release','create',tag,str(dest),str(m),'--repo',repo,'--draft','--target',os.environ.get('GITHUB_SHA','main'),'--title',f'BIPADO DE ROTA VERSÃO {version}','--notes','VERSÃO '+version+': remove a aba de mapa dos endereços salvos, o gesto de arrastar e o botão MAPA no Android e no iPhone. Remove também código e recursos exclusivos dessa tela. Preserva as melhorias de captura J&T, recuperação entre bipes, busca por fragmentos e base postal de Pricumã; mantém pacotes, contatos e exportação Spoke sem telefones. Testes automatizados e assinatura verificados; validação no celular ainda necessária. Atualize sem desinstalar.'])
+        run(['gh','release','create',tag,str(dest),str(m),'--repo',repo,'--draft','--target',os.environ.get('GITHUB_SHA','main'),'--title',f'BIPADO DE ROTA VERSÃO {version}','--notes','VERSÃO '+version+': adiciona usuários pelo nome exato e sincronização entre Android e iPhone, incluindo pacotes, contatos e histórico. Cadastro com nome repetido e único, indicador online e saída com restauração dos dados locais separados. Alterações sem internet permanecem pendentes para nova tentativa. Preserva as correções de captura e busca e a exportação Spoke sem telefones. Testes automatizados e assinatura verificados; validação em celulares físicos ainda necessária. Atualize sem desinstalar.'])
         run(['gh','release','edit',tag,'--repo',repo,'--draft=false','--latest'])
         print('Release publicada:',tag)
 
