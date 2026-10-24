@@ -111,6 +111,10 @@ def main():
         run(['java','-cp',os.pathsep.join(jars),'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler','-no-stdlib','-no-reflect','-classpath',testcp,'-d',str(storetests),*map(str,storesrc)])
         for test in ['SameAddressRegressionKt','StoreSequenceRegressionKt','RouteCsvRegressionKt','GroupedCardsRegressionKt','WhatsappRegressionKt','AccountWireRegressionKt']:
             run(['java','-cp',str(storetests)+os.pathsep+testcp,test],cwd=project)
+        audiotests=temp/'audio-tests.jar'
+        audiosrc=[src/'CaptureSounds.kt']+[project/'verification/audio'/n for n in ['Context.kt','MediaPlayer.kt','AudioRegression.kt']]
+        run(['java','-cp',os.pathsep.join(jars),'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler','-no-stdlib','-no-reflect','-classpath',str(stdlib),'-d',str(audiotests),*map(str,audiosrc)])
+        run(['java','-cp',str(audiotests)+os.pathsep+str(stdlib),'AudioRegressionKt'],cwd=project)
         # The Intent boundary double is outside app/src; execute the real dispatch helper.
         if (src/'SpokeShare.kt').is_file():
             spoketests=temp/'spoke-tests.jar'
@@ -132,7 +136,7 @@ def main():
         manifest={'schema':1,'applicationId':PACKAGE,'versionCode':code,'versionName':version,'minSdk':26,'size':dest.stat().st_size,'sha256':hashlib.sha256(dest.read_bytes()).hexdigest(),'apkUrl':f'https://github.com/{repo}/releases/download/{tag}/{name}'}
         m=temp/'update.json';m.write_text(json.dumps(manifest,ensure_ascii=False,indent=2))
         # Draft first: phones cannot see partial or failed builds. Set latest only after all assets exist.
-        run(['gh','release','create',tag,str(dest),str(m),'--repo',repo,'--draft','--target',os.environ.get('GITHUB_SHA','main'),'--title',f'BIPADO DE ROTA VERSÃO {version}','--notes','VERSÃO '+version+': melhora a comparação de endereços com prefixos repetidos ou extras, preserva números de cada pacote e separa bairros/CEPs incompatíveis. Casos duvidosos pedem revisão. Inclui CANCELAR na correção rápida e som próprio para repetição. Pré-carrega sons, reaproveita comparações e evita processamento repetido sem reduzir a resolução ou as verificações da captura. Compilação e testes automatizados verificados; ganho real de velocidade e leitura devem ser conferidos no celular. Atualize sem desinstalar.'])
+        run(['gh','release','create',tag,str(dest),str(m),'--repo',repo,'--draft','--target',os.environ.get('GITHUB_SHA','main'),'--title',f'BIPADO DE ROTA VERSÃO {version}','--notes','VERSÃO '+version+': corrige a regressão de áudio da V40 no Android. Restaura MediaPlayer.create, método usado na V39, para os avisos de endereço reconhecido, não encontrado e repetido, mantendo o novo toque de repetição. Preserva as demais melhorias da V40. Compilação e testes automatizados verificados; reprodução física deve ser conferida no celular. Atualize sem desinstalar.'])
         run(['gh','release','edit',tag,'--repo',repo,'--draft=false','--latest'])
         print('Release publicada:',tag)
 
