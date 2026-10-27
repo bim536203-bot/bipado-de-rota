@@ -136,7 +136,7 @@ def main():
         manifest={'schema':1,'applicationId':PACKAGE,'versionCode':code,'versionName':version,'minSdk':26,'size':dest.stat().st_size,'sha256':hashlib.sha256(dest.read_bytes()).hexdigest(),'apkUrl':f'https://github.com/{repo}/releases/download/{tag}/{name}'}
         m=temp/'update.json';m.write_text(json.dumps(manifest,ensure_ascii=False,indent=2))
         # Draft first: phones cannot see partial or failed builds. Set latest only after all assets exist.
-        run(['gh','release','create',tag,str(dest),str(m),'--repo',repo,'--draft','--target',os.environ.get('GITHUB_SHA','main'),'--title',f'BIPADO DE ROTA VERSÃO {version}','--notes','VERSÃO '+version+': corrige CONFIRMAR desativado ao editar endereços salvos. Permite manter o endereço, alterar apenas o número do pacote e salvar correção completa sem depender de uma nova sugestão. Preserva contatos e ponto quando o endereço não muda. Mantém proteção contra numeração repetida e alterações concorrentes. Android e iPhone. Atualize sem desinstalar.'])
+        run(['gh','release','create',tag,str(dest),str(m),'--repo',repo,'--draft','--target',os.environ.get('GITHUB_SHA','main'),'--title',f'BIPADO DE ROTA VERSÃO {version}','--notes','VERSÃO '+version+': corrige CONFIRMAR desativado ao editar endereços salvos. Permite manter o endereço, alterar apenas o número do pacote e salvar correção completa sem depender de uma nova sugestão. Preserva contatos e ponto quando o endereço não muda e mantém o ajuste explícito do ponto escolhido. Mantém proteção contra numeração repetida e alterações concorrentes. Android e iPhone. Atualize sem desinstalar.'])
         run(['gh','release','edit',tag,'--repo',repo,'--draft=false','--latest'])
         print('Release publicada:',tag)
 
